@@ -1,0 +1,27 @@
+plugins {
+    id 'scala'
+    id 'application'
+}
+
+repositories {
+    // Use Maven Central for resolving dependencies.
+    mavenCentral()
+}
+
+dependencies {
+    implementation libs.scala.library
+    implementation libs.guava
+    implementation libs.io.javalin
+    implementation libs.com.fasterxml.jackson.core
+    implementation libs.org.slf4j
+    implementation libs.com.fasterxml.jackson.module.scala
+    implementation libs.scala.xml.v2.v13
+
+    testImplementation libs.junit
+    testImplementation libs.scalatest.v2.v13
+    testImplementation libs.junit.v4.v13.v2.v13
+}
+
+application {
+    mainClass = 'org.example.App'
+}
