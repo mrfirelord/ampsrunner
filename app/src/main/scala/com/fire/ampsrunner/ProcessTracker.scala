@@ -2,7 +2,6 @@ package com.fire.ampsrunner
 
 import java.io.File
 import java.util
-import java.util.UUID
 import java.util.concurrent.{Executors, ScheduledExecutorService}
 import scala.collection.mutable
 
@@ -11,12 +10,11 @@ class ProcessTracker(private val maxCapacityPerIp: Int, private val totalCapacit
 
   private val processHandler = new AmpsProcessHandler(
     ampsExecFile = new File(Config.ampsPath),
-    tempDirectory = Config.tempDirectory,
     processTracker = this
   )
 
   private var currentInstanceCapacity: Int = 0
-  private val instanceBySecretKey: mutable.Map[String, AmpsInstance] = mutable.Map.empty
+  val instanceBySecretKey: mutable.Map[String, AmpsInstance] = mutable.Map.empty
   private val instancesPerIp: mutable.Map[String, AmpsInstanceQueue] = mutable.Map.empty
 
   processHandler.checkExternallyKilledProcessesPeriodically()
@@ -26,7 +24,7 @@ class ProcessTracker(private val maxCapacityPerIp: Int, private val totalCapacit
   expiredProcessRemover.scheduleAtFixedRate(() => {
     val now = System.currentTimeMillis()
     instanceBySecretKey.values.filter(_.expirationTimestamp < now).foreach { instance =>
-      processHandler.stopProcess(instance.pid)
+      remove(instance.secret)
     }
   }, 0, 5, java.util.concurrent.TimeUnit.SECONDS)
 
@@ -57,7 +55,7 @@ class ProcessTracker(private val maxCapacityPerIp: Int, private val totalCapacit
     if (instanceQueue.size() >= maxCapacityPerIp)
       throw new IllegalStateException("Too many instances")
 
-    val pid = processHandler.startProcess(secretKey = secret, xmlInput = xmlInput)
+    val pid = processHandler.startProcess(secretKey = secret, inputXml = xmlInput)
     val instance = AmpsInstance(
       pid = pid,
       secret = secret,

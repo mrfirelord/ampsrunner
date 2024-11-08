@@ -1,12 +1,12 @@
 package com.fire.ampsrunner
 
-import java.io.{File, IOException, PrintWriter}
+import java.io.{File, PrintWriter}
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 import scala.collection.mutable
 import scala.jdk.OptionConverters.RichOptional
 
+/** System process manager */
 class AmpsProcessHandler(private val ampsExecFile: File,
-                         private val tempDirectory: String,
                          private val processTracker: ProcessTracker) {
   private val processByPid: mutable.Map[Long, ProcessHandle] = mutable.Map.empty
   /** pid -> directory for amps instance */
@@ -21,29 +21,57 @@ class AmpsProcessHandler(private val ampsExecFile: File,
     }.toScala.getOrElse(false)
   }
 
-  def startProcess(secretKey: String, xmlInput: String): Long = {
+  /** Runs system process and returns PID */
+  def startProcess(secretKey: String, inputXml: String): Long = {
+    val instanceDirectory: File = createInstanceDirectory(secretKey)
+
     try {
-      val instanceDirectory = Config.buildDirectoryInstance(secretKey)
-      instanceDirectory.mkdirs()
+      val ampsConfigFile: File = writeTextToFile(instanceDirectory, inputXml)
+      val ampsProcess: Process = runAmpsProcess(instanceDirectory, ampsConfigFile)
 
-      val ampsConfigFile = new File(instanceDirectory, "amps.xml")
-      writeTextToFile(ampsConfigFile, xmlInput)
-
-      val processBuilder = new ProcessBuilder(ampsExecFile.getAbsolutePath, ampsConfigFile.getAbsolutePath)
-      val logFile = new File(instanceDirectory, "amps.log")
-      processBuilder.redirectOutput(logFile)
-      processBuilder.redirectError(logFile)
-      val process = processBuilder.start()
-
-      processByPid(process.pid()) = process.toHandle
-      createdDirectoryByPid(process.pid()) = instanceDirectory
-
-      println(s"Amps started with PID: ${process.pid()}")
-
-      process.pid()
+      processByPid(ampsProcess.pid()) = ampsProcess.toHandle
+      createdDirectoryByPid(ampsProcess.pid()) = instanceDirectory
+      println(s"Amps started with PID: ${ampsProcess.pid()}")
+      ampsProcess.pid()
     } catch {
-      case e: IOException => throw new RuntimeException(e)
+      case e: Exception =>
+        deleteDirectory(instanceDirectory)
+        throw e
     }
+  }
+
+  private def createInstanceDirectory(secretKey: String) = {
+    val directory = Config.buildDirectoryInstance(secretKey)
+    try {
+      directory.mkdirs()
+      directory
+    } catch {
+      case e: Exception =>
+        deleteDirectory(directory)
+        throw new RuntimeException("Can not create directory for process", e)
+    }
+  }
+
+  private def writeTextToFile(instanceDirectory: File, text: String): File = {
+    val ampsConfigFile = new File(instanceDirectory, "amps.xml")
+    val writer = new PrintWriter(ampsConfigFile)
+    try {
+      writer.write(text)
+      ampsConfigFile
+    }
+    finally {
+      ampsConfigFile.delete()
+      writer.close()
+    }
+  }
+
+  private def runAmpsProcess(instanceDirectory: File, ampsConfigFile: File) = {
+    val processBuilder = new ProcessBuilder(ampsExecFile.getAbsolutePath, ampsConfigFile.getAbsolutePath)
+    val logFile = new File(instanceDirectory, "amps.log")
+    processBuilder.redirectOutput(logFile)
+    processBuilder.redirectError(logFile)
+    val process = processBuilder.start()
+    process
   }
 
   def stopProcess(pid: Long): Unit = {
@@ -88,15 +116,6 @@ class AmpsProcessHandler(private val ampsExecFile: File,
         }
       }
     }, 0, 10, TimeUnit.SECONDS)
-  }
-
-  private def writeTextToFile(file: File, text: String): Unit = {
-    val writer = new PrintWriter(file)
-    try {
-      writer.write(text)
-    } finally {
-      writer.close()
-    }
   }
 
   private def deleteDirectory(directory: File): Unit = {

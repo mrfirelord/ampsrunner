@@ -2,7 +2,7 @@ package com.fire.ampsrunner
 
 import java.io.{File, FileWriter}
 
-/** Responsible for reading/writing information about instances to disk */
+/** Reads/writes information about instances to disk */
 class StorageHelper {
   def writeAllInstances(instances: Set[AmpsInstance]): Unit = {
     val fileWriter = new FileWriter(new File(Config.runningInstancesInfoPath))
