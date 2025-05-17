@@ -1,7 +1,7 @@
 package com.fire.ampsrunner
 
 import java.io.{File, PrintWriter}
-import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit, TimeoutException}
 import scala.collection.mutable
 import scala.jdk.OptionConverters.RichOptional
 
@@ -80,15 +80,14 @@ class AmpsProcessHandler(private val ampsExecFile: File,
 
     try {
       processHandle.destroy()
-
-      val stillAlive = processHandle.onExit().get(5, TimeUnit.SECONDS).isAlive
-      if (stillAlive) {
-        processHandle.destroyForcibly()
-        println(s"Forcibly terminated AMPS with PID: $pid")
-      } else {
-        println(s"AMPS with PID: $pid terminated successfully")
-      }
+      processHandle.onExit().get(5, TimeUnit.SECONDS).isAlive
+      println(s"AMPS with PID: $pid terminated successfully")
     } catch {
+      case _: TimeoutException =>
+        println(s"AMPS server with PID: $pid hasn't terminated within ${config.ampsServerStoppingTimeout.toSeconds} " +
+          s"seconds. Terminating the process forcibly ...")
+        processHandle.destroyForcibly()
+        println(s"AMPS with PID: $pid was terminated forcibly")
       case e: Exception =>
         println(s"Error while stopping AMPS with PID: $pid")
         e.printStackTrace()

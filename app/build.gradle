@@ -16,7 +16,8 @@ dependencies {
     implementation libs.org.slf4j
     implementation libs.com.fasterxml.jackson.module.scala
     implementation libs.scala.xml.v2.v13
-    implementation libs.com.typesafe.config
+    implementation libs.typesafe.config
+    implementation libs.typesafe.logging
 
     testImplementation libs.junit
     testImplementation libs.scalatest.v2.v13

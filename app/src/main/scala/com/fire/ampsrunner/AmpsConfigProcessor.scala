@@ -5,7 +5,7 @@ import scala.collection.mutable
 import scala.xml.NodeSeq
 
 class AmpsConfigProcessor {
-  /** Replaces templates ports and paths in xml template with real ones */
+  /** Replaces template ports and paths in xml template with real ones */
   def process(xmlInput: String, instanceDirectory: String): ProcessedXml = {
     val xml: NodeSeq = scala.xml.XML.loadString(xmlInput)
 

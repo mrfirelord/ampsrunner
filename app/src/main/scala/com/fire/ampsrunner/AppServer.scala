@@ -24,7 +24,7 @@ object AppServer {
   private val configProcessor = new AmpsConfigProcessor()
 
   def main(args: Array[String]): Unit = {
-    val app = Javalin.create().start(8080)
+    val app = Javalin.create().start(config.serverPort)
 
     app.post(START_URI, new Handler {
       override def handle(ctx: Context): Unit = {
