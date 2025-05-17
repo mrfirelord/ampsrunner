@@ -3,9 +3,9 @@ package com.fire.ampsrunner
 import java.io.{File, FileWriter}
 
 /** Reads/writes information about instances to disk */
-class StorageHelper {
+class StorageHelper(config: ServerConfig) {
   def writeAllInstances(instances: Set[AmpsInstance]): Unit = {
-    val fileWriter = new FileWriter(new File(Config.runningInstancesInfoPath))
+    val fileWriter = new FileWriter(new File(config.runningInstancesInfoPath))
 
     try {
       for (instance <- instances) {
@@ -22,11 +22,11 @@ class StorageHelper {
   }
 
   def readAllInstances(): Seq[AmpsInstance] = {
-    if (!new File(Config.runningInstancesInfoPath).exists()) {
+    if (!new File(config.runningInstancesInfoPath).exists()) {
       return Seq()
     }
 
-    val source = scala.io.Source.fromFile(Config.runningInstancesInfoPath)
+    val source = scala.io.Source.fromFile(config.runningInstancesInfoPath)
     val lines = try source.mkString finally source.close()
 
     for {

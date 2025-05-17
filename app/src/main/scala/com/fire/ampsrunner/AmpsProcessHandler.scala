@@ -7,7 +7,8 @@ import scala.jdk.OptionConverters.RichOptional
 
 /** System process manager */
 class AmpsProcessHandler(private val ampsExecFile: File,
-                         private val processTracker: ProcessTracker) {
+                         private val processTracker: ProcessTracker,
+                         config: ServerConfig) {
   private val processByPid: mutable.Map[Long, ProcessHandle] = mutable.Map.empty
   /** pid -> directory for amps instance */
   private val createdDirectoryByPid: mutable.Map[Long, File] = mutable.Map.empty
@@ -16,7 +17,7 @@ class AmpsProcessHandler(private val ampsExecFile: File,
   def addExistingInstance(instance: AmpsInstance): Boolean = {
     ProcessHandle.of(instance.pid).map { processHandle =>
       processByPid(instance.pid) = processHandle
-      createdDirectoryByPid(instance.pid) = Config.buildDirectoryInstance(instance.secret)
+      createdDirectoryByPid(instance.pid) = config.buildDirectoryInstance(instance.secret)
       true
     }.toScala.getOrElse(false)
   }
@@ -41,7 +42,7 @@ class AmpsProcessHandler(private val ampsExecFile: File,
   }
 
   private def createInstanceDirectory(secretKey: String) = {
-    val directory = Config.buildDirectoryInstance(secretKey)
+    val directory = config.buildDirectoryInstance(secretKey)
     try {
       directory.mkdirs()
       directory

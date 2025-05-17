@@ -5,16 +5,17 @@ import java.util
 import java.util.concurrent.{Executors, ScheduledExecutorService}
 import scala.collection.mutable
 
-class ProcessTracker(private val maxCapacityPerIp: Int, private val totalCapacity: Int) {
-  private val storageHelper = new StorageHelper()
+class ProcessTracker(config: ServerConfig) {
+  private val storageHelper = new StorageHelper(config)
 
   private val processHandler = new AmpsProcessHandler(
-    ampsExecFile = new File(Config.ampsPath),
-    processTracker = this
+    ampsExecFile = new File(config.ampsPath),
+    processTracker = this,
+    config = config
   )
 
   private var currentInstanceCapacity: Int = 0
-  val instanceBySecretKey: mutable.Map[String, AmpsInstance] = mutable.Map.empty
+  private val instanceBySecretKey: mutable.Map[String, AmpsInstance] = mutable.Map.empty
   private val instancesPerIp: mutable.Map[String, AmpsInstanceQueue] = mutable.Map.empty
 
   processHandler.checkExternallyKilledProcessesPeriodically()
@@ -28,7 +29,7 @@ class ProcessTracker(private val maxCapacityPerIp: Int, private val totalCapacit
     }
   }, 0, 5, java.util.concurrent.TimeUnit.SECONDS)
 
-  val existingInstances: Seq[AmpsInstance] = storageHelper.readAllInstances()
+  private val existingInstances: Seq[AmpsInstance] = storageHelper.readAllInstances()
   for (instance <- existingInstances) {
     if (instance.expirationTimestamp > System.currentTimeMillis()) {
       if (processHandler.addExistingInstance(instance)) {
@@ -48,11 +49,11 @@ class ProcessTracker(private val maxCapacityPerIp: Int, private val totalCapacit
 
   /** Starts AMPS instance based on xml config */
   def add(xmlInput: String, expireAfterInSeconds: Int, ip: String, secret: String): String = {
-    if (currentInstanceCapacity >= totalCapacity)
+    if (currentInstanceCapacity >= config.totalCapacity)
       throw new IllegalStateException("Too many instances")
 
     val instanceQueue = instancesPerIp.getOrElseUpdate(ip, new AmpsInstanceQueue)
-    if (instanceQueue.size() >= maxCapacityPerIp)
+    if (instanceQueue.size() >= config.maxCapacityPerIp)
       throw new IllegalStateException("Too many instances")
 
     val pid = processHandler.startProcess(secretKey = secret, inputXml = xmlInput)
